@@ -4,7 +4,6 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -24,6 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
+        $exceptions->renderable(function (PDOException $e) {
+            return response()->json([
+                "message" => "Something went wrong",
+                "status" => 500
+            ], 500);
+        });
         $exceptions->renderable(function (Exception $e) {
             $status = $e->getCode() ?: Response::HTTP_INTERNAL_SERVER_ERROR;
             return response()->json([
