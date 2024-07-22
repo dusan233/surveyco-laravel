@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class SurveyPage extends Model
+class SurveyCollector extends Model
 {
     use HasFactory, SoftDeletes, HasUuids;
 
@@ -23,8 +23,8 @@ class SurveyPage extends Model
         return $this->belongsTo(Survey::class);
     }
 
-    public function questions(): HasMany
+    public function responses(): HasMany
     {
-        return $this->hasMany(Question::class);
+        return $this->hasMany(SurveyResponse::class);
     }
 }

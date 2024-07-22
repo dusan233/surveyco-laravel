@@ -11,12 +11,13 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('question_choices', function (Blueprint $table) {
-            $table->uuid("id");
+            $table->uuid("id")->primary();
             $table->timestamps();
             $table->softDeletes();
             $table->text("description");
             $table->string("description_image")->nullable();
             $table->integer("display_number");
+            $table->uuid("question_id");
             $table->foreign("question_id")->references("id")->on("questions");
         });
     }

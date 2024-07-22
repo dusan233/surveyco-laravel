@@ -6,25 +6,18 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class SurveyPage extends Model
+class SurveyResponse extends Model
 {
     use HasFactory, SoftDeletes, HasUuids;
 
     public $incrementing = false;
     protected $keyType = 'string';
     protected $guarded = [];
-    protected $touches = ["survey"];
 
-    public function survey(): BelongsTo
+    public function collector(): BelongsTo
     {
-        return $this->belongsTo(Survey::class);
-    }
-
-    public function questions(): HasMany
-    {
-        return $this->hasMany(Question::class);
+        return $this->belongsTo(SurveyCollector::class);
     }
 }

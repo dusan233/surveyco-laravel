@@ -11,14 +11,16 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('survey_responses', function (Blueprint $table) {
-            $table->uuid("id");
+            $table->uuid("id")->primary();
             $table->timestamps();
             $table->softDeletes();
             $table->enum("status", ["incomplete", "complete"])->default("incomplete");
             $table->integer("display_number");
             $table->ipAddress("ip_address");
-            $table->foreign("survey_id")->references("id")->on("surveys");
-            $table->foreign("collector_id")->references("id")->on("survey_collectors");
+            //if we use many through or something this is not needed
+            // $table->foreign("survey_id")->references("id")->on("surveys");
+            $table->uuid("survey_collector_id");
+            $table->foreign("survey_collector_id")->references("id")->on("survey_collectors");
         });
     }
 

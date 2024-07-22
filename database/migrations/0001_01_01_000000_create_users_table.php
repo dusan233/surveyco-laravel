@@ -11,15 +11,15 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
-            $table->string("id")->unique();
+            $table->string("id")->unique()->primary();
             $table->string('email')->unique();
             $table->string('first_name');
             $table->string('last_name');
             $table->enum('email_verification_status', ["verified", "unverified"]);
             $table->string('image_url')->nullable();
             $table->string('profile_image_url')->nullable();
-            $table->timestampsTz();
-            $table->softDeletesTz('deleted_at', precision: 0);
+            $table->timestamps();
+            $table->softDeletes('deleted_at', precision: 0);
         });
     }
 

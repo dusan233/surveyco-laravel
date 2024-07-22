@@ -3,6 +3,8 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -18,8 +20,15 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'clerkauthentication' => \App\Http\Middleware\ClerkAuthentication::class,
+            'emailVerified' => \App\Http\Middleware\EmailAddressVerified::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        //
+        $exceptions->renderable(function (Exception $e) {
+            $status = $e->getCode() ?: Response::HTTP_INTERNAL_SERVER_ERROR;
+            return response()->json([
+                "message" => $e->getMessage() ?: "Something went wrong",
+                "status" => $status,
+            ], $status);
+        });
     })->create();

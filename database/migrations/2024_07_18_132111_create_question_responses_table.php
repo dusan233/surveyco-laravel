@@ -11,10 +11,12 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('question_responses', function (Blueprint $table) {
-            $table->uuid("id");
+            $table->uuid("id")->primary();
             $table->timestamps();
             $table->softDeletes();
+            $table->uuid("survey_response_id");
             $table->foreign("survey_response_id")->references("id")->on("survey_responses");
+            $table->uuid("question_id");
             $table->foreign("question_id")->references("id")->on("questions");
         });
     }

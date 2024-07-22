@@ -4,6 +4,8 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpFoundation\Response;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -25,7 +27,7 @@ class ClerkAuthentication
 
         if (!$token) {
             //check if token is not null
-            return response()->json(["error" => "Token is not present"], Response::HTTP_UNAUTHORIZED);
+            throw new UnauthorizedException("Token is not present", Response::HTTP_UNAUTHORIZED);
         }
 
 
@@ -34,14 +36,11 @@ class ClerkAuthentication
 
             //just check that azp is correct
 
-
-            $request->attributes->set('userId', $decoded->sub);
-
-            // return response()->json(["data" => $decoded->sub]);
+            Auth::onceUsingId($decoded->sub);
 
             return $next($request);
         } catch (\Exception $e) {
-            return response()->json(["error" => $e->getMessage()], Response::HTTP_UNAUTHORIZED);
+            throw new UnauthorizedException("Invalid token", Response::HTTP_UNAUTHORIZED);
         }
 
     }

@@ -11,12 +11,13 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('survey_collectors', function (Blueprint $table) {
-            $table->uuid("id");
+            $table->uuid("id")->primary();
             $table->timestamps();
             $table->softDeletes();
             $table->string("type");
             $table->enum("status", ["open", "closed"])->default("open");
             $table->string("name");
+            $table->uuid("survey_id");
             $table->foreign("survey_id")->references("id")->on("surveys");
         });
     }

@@ -11,9 +11,10 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::create('survey_pages', function (Blueprint $table) {
-            $table->uuid("id");
+            $table->uuid("id")->primary();
             $table->timestamps();
             $table->softDeletes();
+            $table->uuid("survey_id");
             $table->foreign("survey_id")->references("id")->on("surveys");
             $table->integer("display_number");
         });
