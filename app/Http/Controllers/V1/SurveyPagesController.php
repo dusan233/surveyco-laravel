@@ -8,14 +8,13 @@ use App\Http\Resources\V1\SurveyPageResource;
 use App\Models\Survey;
 use App\Models\SurveyPage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpFoundation\Response;
 
 class SurveyPagesController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(string $survey_id)
+    public function index(Request $request, string $survey_id)
     {
         $survey = Survey::find($survey_id);
 
@@ -30,36 +29,37 @@ class SurveyPagesController extends Controller
 
         return SurveyPageResource::collection($pages);
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(Request $request, string $survey_id)
     {
-        //
-    }
+        $survey = Survey::find($survey_id);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        if (!$survey) {
+            throw new ResourceNotFoundException("Survey resource not found", Response::HTTP_NOT_FOUND);
+        }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+        if ($request->user()->cannot("create", [SurveyPage::class, $survey])) {
+            throw new UnauthorizedException(
+                "This action is unauthorized",
+                Response::HTTP_UNAUTHORIZED
+            );
+        }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        DB::beginTransaction();
+        try {
+            $newPagePosition = $survey->pages()
+                ->orderByDesc("display_number")->first()->lockForUpdate()->display_number + 1;
+
+            $surveyPage = SurveyPage::create([
+                "survey_id" => $survey_id,
+                "display_number" => $newPagePosition,
+            ]);
+
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            throw $e;
+        }
+
+        return new SurveyPageResource($surveyPage);
     }
 }

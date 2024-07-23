@@ -19,6 +19,7 @@ class SurveyPageResource extends JsonResource
             "createdAt" => $this->created_at,
             "updatedAt" => $this->updated_at,
             "displayNumber" => $this->display_number,
+            "survey_id" => $this->survey_id,
             "totalQuestions" => $this->whenCounted("questions", $this->questions_count),
         ];
     }
