@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\QuestionTypeEnum;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -16,6 +17,7 @@ return new class extends Migration {
             $table->softDeletes();
             $table->text("description");
             $table->string("description_image")->nullable();
+            // $table->enum("type", array_column(QuestionTypeEnum::cases(), 'value'));
             $table->string("type");
             $table->integer("display_number");
             //if we use many through or something this is not needed
