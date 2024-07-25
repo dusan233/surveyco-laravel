@@ -8,7 +8,6 @@ use App\Models\User;
 
 class QuestionPolicy
 {
-
     public function create(User $user, SurveyPage $page): bool
     {
         return $user->id === $page->survey->author_id;
@@ -19,6 +18,6 @@ class QuestionPolicy
     }
     public function delete(User $user, Question $question): bool
     {
-        //
+        return $user->id === $question->surveyPage->survey->author_id;
     }
 }
