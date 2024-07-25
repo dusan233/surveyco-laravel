@@ -15,7 +15,7 @@ class QuestionPolicy
     }
     public function update(User $user, Question $question): bool
     {
-        //
+        return $user->id === $question->surveyPage->survey->author_id;
     }
     public function delete(User $user, Question $question): bool
     {
