@@ -20,4 +20,9 @@ class QuestionPolicy
     {
         return $user->id === $question->surveyPage->survey->author_id;
     }
+
+    public function copy(User $user, Question $question): bool
+    {
+        return $user->id === $question->surveyPage->survey->author_id;
+    }
 }

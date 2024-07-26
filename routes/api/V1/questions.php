@@ -8,4 +8,5 @@ Route::prefix("questions")->middleware(["clerkauthentication", "emailVerified"])
     ->group(function () {
         Route::put("{question}", [QuestionsController::class, "update"]);
         Route::delete("{question}", [QuestionsController::class, "destroy"]);
+        Route::post("{question}/copy", [QuestionsController::class, "copy"]);
     });
