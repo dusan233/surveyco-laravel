@@ -25,4 +25,9 @@ class QuestionPolicy
     {
         return $user->id === $question->surveyPage->survey->author_id;
     }
+
+    public function move(User $user, Question $question): bool
+    {
+        return $user->id === $question->surveyPage->survey->author_id;
+    }
 }

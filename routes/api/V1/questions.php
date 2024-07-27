@@ -9,4 +9,5 @@ Route::prefix("questions")->middleware(["clerkauthentication", "emailVerified"])
         Route::put("{question}", [QuestionsController::class, "update"]);
         Route::delete("{question}", [QuestionsController::class, "destroy"]);
         Route::post("{question}/copy", [QuestionsController::class, "copy"]);
+        Route::patch("{question}/move", [QuestionsController::class, "move"]);
     });
