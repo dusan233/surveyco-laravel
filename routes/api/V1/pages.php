@@ -10,4 +10,5 @@ Route::prefix("pages")->middleware(["clerkauthentication", "emailVerified"])
         Route::post("{page}/questions", [PageQuestionsController::class, "store"]);
         Route::get("{page}/questions", [PageQuestionsController::class, "index"]);
         Route::delete("{page}", [PagesController::class, "destroy"]);
+        Route::post("{page}/copy", [PagesController::class, "copy"]);
     });

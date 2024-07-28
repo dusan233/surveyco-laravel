@@ -61,6 +61,7 @@ class PageQuestionsController extends Controller
 
             if ($targetPage->questions_count === 0) {
                 $previousPageWithQuestions = SurveyPage::where('display_number', '<', $targetPage->display_number)
+                    ->where("survey_id", $surveyId)
                     ->whereHas('questions')
                     ->lockForUpdate()
                     ->orderBy('display_number', 'desc')

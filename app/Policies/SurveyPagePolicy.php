@@ -25,34 +25,15 @@ class SurveyPagePolicy
     }
 
     /**
-     * Determine whether the user can update the model.
-     */
-    public function update(User $user, SurveyPage $surveyPage): bool
-    {
-        //
-    }
-
-    /**
      * Determine whether the user can delete the model.
      */
     public function delete(User $user, SurveyPage $surveyPage): bool
     {
-        //
+        return $user->id === $surveyPage->survey->author_id;
     }
 
-    /**
-     * Determine whether the user can restore the model.
-     */
-    public function restore(User $user, SurveyPage $surveyPage): bool
+    public function copy(User $user, SurveyPage $surveyPage): bool
     {
-        //
-    }
-
-    /**
-     * Determine whether the user can permanently delete the model.
-     */
-    public function forceDelete(User $user, SurveyPage $surveyPage): bool
-    {
-        //
+        return $user->id === $surveyPage->survey->author_id;
     }
 }

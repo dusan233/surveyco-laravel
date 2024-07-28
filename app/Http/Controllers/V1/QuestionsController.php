@@ -229,6 +229,7 @@ class QuestionsController extends Controller
                 }
             } else {
                 $previousPageWithQuestions = SurveyPage::where('display_number', '<', $targetPage->display_number)
+                    ->where("survey_id", $surveyId)
                     ->whereHas('questions')
                     ->lockForUpdate()
                     ->orderBy('display_number', 'desc')
@@ -393,6 +394,7 @@ class QuestionsController extends Controller
                 }
             } else {
                 $previousPageWithQuestions = SurveyPage::where('display_number', '<', $targetPage->display_number)
+                    ->where("survey_id", $surveyId)
                     ->whereHas('questions')
                     ->lockForUpdate()
                     ->orderBy('display_number', 'desc')
