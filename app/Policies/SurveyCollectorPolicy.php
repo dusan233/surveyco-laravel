@@ -38,6 +38,6 @@ class SurveyCollectorPolicy
      */
     public function delete(User $user, SurveyCollector $surveyCollector): bool
     {
-        //
+        return $user->id === $surveyCollector->survey->author_id;
     }
 }

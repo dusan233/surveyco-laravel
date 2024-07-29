@@ -11,5 +11,6 @@ Route::prefix("/v1")->group(function () {
     require __DIR__ . '/api/V1/surveys.php';
     require __DIR__ . '/api/V1/pages.php';
     require __DIR__ . '/api/V1/questions.php';
+    require __DIR__ . '/api/V1/collectors.php';
 });
 
