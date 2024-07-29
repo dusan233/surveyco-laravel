@@ -8,9 +8,10 @@ use App\Models\User;
 
 class SurveyCollectorPolicy
 {
-    /**
-     * Determine whether the user can view the model.
-     */
+    public function viewSurveyCollectors(User $user, Survey $survey): bool
+    {
+        return $user->id === $survey->author_id;
+    }
     public function view(User $user, SurveyCollector $surveyCollector): bool
     {
         //
