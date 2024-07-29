@@ -16,6 +16,7 @@ class CollectorResource extends JsonResource
             "type" => $this->type,
             "name" => $this->name,
             "status" => $this->status,
+            "surveyId" => $this->survey_id,
             "totalResponses" => $this->whenCounted("responses", $this->responses_count)
         ];
     }

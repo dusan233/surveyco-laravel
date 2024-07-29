@@ -12,10 +12,6 @@ class SurveyCollectorPolicy
     {
         return $user->id === $survey->author_id;
     }
-    public function view(User $user, SurveyCollector $surveyCollector): bool
-    {
-        //
-    }
 
     /**
      * Determine whether the user can create models.

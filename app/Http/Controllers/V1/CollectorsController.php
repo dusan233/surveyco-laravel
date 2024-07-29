@@ -4,6 +4,7 @@ namespace App\Http\Controllers\V1;
 
 use App\Exceptions\ResourceNotFoundException;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\V1\CollectorResource;
 use App\Models\SurveyCollector;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,9 +13,15 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CollectorsController extends Controller
 {
-    public function show(string $id)
+    public function show(string $collector_id)
     {
-        //
+        $collector = SurveyCollector::find($collector_id);
+
+        if (!$collector) {
+            throw new ResourceNotFoundException("Collector resource not found", Response::HTTP_NOT_FOUND);
+        }
+
+        return new CollectorResource($collector);
     }
     public function update(Request $request, string $id)
     {
