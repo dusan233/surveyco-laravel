@@ -36,4 +36,9 @@ class SurveyPagePolicy
     {
         return $user->id === $surveyPage->survey->author_id;
     }
+
+    public function move(User $user, SurveyPage $surveyPage): bool
+    {
+        return $user->id === $surveyPage->survey->author_id;
+    }
 }
