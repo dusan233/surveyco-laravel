@@ -21,6 +21,7 @@ class SurveyResource extends JsonResource
             "title" => $this->title,
             "category" => $this->category,
             "author" => new UserResource($this->whenLoaded("author")),
+            "status" => $this->status(),
             "totalQuestions" => $this->whenCounted("questions", $this->questions_count),
             "totalResponses" => $this->whenCounted("responses", $this->responses_count),
             "totalSurveyPages" => $this->whenCounted("pages", $this->pages_count),
