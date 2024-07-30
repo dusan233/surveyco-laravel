@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->softDeletes();
             $table->uuid("survey_id");
             $table->foreign("survey_id")->references("id")->on("surveys");
-            $table->integer("display_number");
+            $table->unsignedInteger("display_number");
         });
     }
 

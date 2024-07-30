@@ -15,10 +15,10 @@ return new class extends Migration {
             $table->timestamps();
             $table->softDeletes();
             $table->text("text_answer")->nullable();
-            // $table->string("question_choice_id")->nullable();
-            // $table->foreign("question_id")->references("id")->on("questions");
-            // $table->foreign("question_response_id")->references("id")->on("question_responses");
-            // $table->foreign("question_choice_id")->references("id")->on("question_choices");
+            $table->uuid("question_choice_id")->nullable();
+            $table->foreign("question_choice_id")->references("id")->on("question_choices");
+            $table->uuid("question_id");
+            $table->foreign("question_id")->references("id")->on("questions");
         });
     }
 

@@ -17,11 +17,8 @@ return new class extends Migration {
             $table->softDeletes();
             $table->text("description");
             $table->string("description_image")->nullable();
-            // $table->enum("type", array_column(QuestionTypeEnum::cases(), 'value'));
-            $table->string("type");
-            $table->integer("display_number");
-            //if we use many through or something this is not needed
-            // $table->foreign("survey_id")->references("id")->on("surveys");
+            $table->enum("type", array_column(QuestionTypeEnum::cases(), 'value'));
+            $table->unsignedInteger("display_number");
             $table->uuid("survey_page_id");
             $table->foreign("survey_page_id")->references("id")->on("survey_pages");
             $table->boolean("required");

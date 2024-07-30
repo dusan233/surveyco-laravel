@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->softDeletes();
             $table->text("description");
             $table->string("description_image")->nullable();
-            $table->integer("display_number");
+            $table->unsignedInteger("display_number");
             $table->uuid("question_id");
             $table->foreign("question_id")->references("id")->on("questions");
         });
