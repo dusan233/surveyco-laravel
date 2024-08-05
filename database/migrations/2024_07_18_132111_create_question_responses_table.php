@@ -14,8 +14,8 @@ return new class extends Migration {
             $table->uuid("id")->primary();
             $table->timestamps();
             $table->softDeletes();
-            // $table->uuid("survey_response_id");
-            // $table->foreign("survey_response_id")->references("id")->on("survey_responses");
+            $table->uuid("survey_response_id");
+            $table->foreign("survey_response_id")->references("id")->on("survey_responses");
             $table->uuid("question_id");
             $table->foreign("question_id")->references("id")->on("questions");
         });

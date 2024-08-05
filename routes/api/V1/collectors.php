@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\V1\CollectorResponsesController;
 use App\Http\Controllers\V1\CollectorsController;
 use Illuminate\Support\Facades\Route;
 
@@ -10,4 +11,5 @@ Route::prefix("collectors")->middleware(["clerkauthentication", "emailVerified"]
         Route::get("{collector}", [CollectorsController::class, "show"]);
         Route::patch("{collector}/update-status", [CollectorsController::class, "updateStatus"]);
         Route::patch("{collector}", [CollectorsController::class, "update"]);
+        Route::post("{collector}/responses", [CollectorResponsesController::class, "store"]);
     });

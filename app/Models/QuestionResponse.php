@@ -9,22 +9,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class SurveyCollector extends Model
+class QuestionResponse extends Model
 {
     use HasFactory, SoftDeletes, HasUuids;
 
     public $incrementing = false;
     protected $keyType = 'string';
     protected $guarded = [];
-    protected $touches = ["survey"];
 
-    public function survey(): BelongsTo
+    public function question(): BelongsTo
     {
-        return $this->belongsTo(Survey::class);
+        return $this->belongsTo(Question::class);
     }
 
-    public function surveyResponses(): HasMany
+    public function questionResponseAnswers(): HasMany
     {
-        return $this->hasMany(SurveyResponse::class);
+        return $this->hasMany(QuestionResponseAnswer::class);
     }
 }

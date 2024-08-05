@@ -47,7 +47,9 @@ class SurveyPagesController extends Controller
         DB::beginTransaction();
         try {
             $newPagePosition = $survey->pages()
-                ->orderByDesc("display_number")->first()->lockForUpdate()->display_number + 1;
+                ->orderByDesc("display_number")
+                ->lockForUpdate()
+                ->first()->display_number + 1;
 
             $surveyPage = SurveyPage::create([
                 "survey_id" => $survey_id,

@@ -17,7 +17,7 @@ class SurveyResponse extends Model
     protected $keyType = 'string';
     protected $guarded = [];
 
-    public function collector(): BelongsTo
+    public function surveyCollector(): BelongsTo
     {
         return $this->belongsTo(SurveyCollector::class);
     }

@@ -19,6 +19,8 @@ return new class extends Migration {
             $table->foreign("question_choice_id")->references("id")->on("question_choices");
             $table->uuid("question_id");
             $table->foreign("question_id")->references("id")->on("questions");
+            $table->uuid("question_response_id");
+            $table->foreign("question_response_id")->references("id")->on("question_responses");
         });
     }
 
