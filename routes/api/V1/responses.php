@@ -7,4 +7,5 @@ use Illuminate\Support\Facades\Route;
 Route::prefix("responses")->middleware(["clerkauthentication", "emailVerified"])
     ->group(function () {
         Route::get("{response}", [ResponsesController::class, "show"]);
+        Route::get("{response}/details", [ResponsesController::class, "details"]);
     });

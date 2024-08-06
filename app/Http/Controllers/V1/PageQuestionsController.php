@@ -25,6 +25,7 @@ class PageQuestionsController extends Controller
 
         $questions = Question::where("survey_page_id", $page_id)
             ->orderBy("display_number", "asc")
+            ->with("choices")
             ->get();
 
         return QuestionResource::collection($questions);

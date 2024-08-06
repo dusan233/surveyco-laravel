@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\V1;
 
-use App\Models\QuestionChoice;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,8 +24,17 @@ class QuestionResource extends JsonResource
             "displayNumber" => $this->display_number,
             "required" => $this->required,
             "randomize" => $this->whenNotNull($this->randomize),
-            "choices" => QuestionChoiceResource::collection($this->whenLoaded("choices")),
         ];
+
+        if ($this->relationLoaded("choices") && $this->choices->isNotEmpty()) {
+            $array["choices"] = QuestionChoiceResource::collection($this->choices);
+        }
+
+        if ($this->relationLoaded("questionResponses") && $this->questionResponses->isNotEmpty()) {
+            if (isset($this->questionResponses[0]->questionResponseAnswers)) {
+                $array["answers"] = QuestionResponseAnswerResource::collection($this->questionResponses[0]->questionResponseAnswers);
+            }
+        }
 
         return $array;
     }
