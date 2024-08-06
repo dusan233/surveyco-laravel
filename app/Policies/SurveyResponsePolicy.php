@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Survey;
+use App\Models\SurveyResponse;
 use App\Models\User;
 
 class SurveyResponsePolicy
@@ -13,6 +14,11 @@ class SurveyResponsePolicy
     public function viewSurveyResponses(User $user, Survey $survey): bool
     {
         return $user->id === $survey->author_id;
+    }
+
+    public function view(User $user, SurveyResponse $surveyResponse): bool
+    {
+        return $user->id === $surveyResponse->surveyCollector->survey->author_id;
     }
 
 }
