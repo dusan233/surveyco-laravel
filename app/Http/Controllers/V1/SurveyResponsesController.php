@@ -4,13 +4,13 @@ namespace App\Http\Controllers\V1;
 
 use App\Exceptions\BadQueryParamsException;
 use App\Exceptions\ResourceNotFoundException;
+use App\Exceptions\UnauthorizedException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\V1\SurveyResponseResource;
 use App\Models\Survey;
 use App\Models\SurveyResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpFoundation\Response;
 
 class SurveyResponsesController extends Controller
@@ -24,10 +24,7 @@ class SurveyResponsesController extends Controller
         }
 
         if ($request->user()->cannot("viewSurveyResponses", [SurveyResponse::class, $survey])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
         $builder = DB::table('survey_responses')
