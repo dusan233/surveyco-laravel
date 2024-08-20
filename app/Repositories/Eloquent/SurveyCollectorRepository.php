@@ -3,25 +3,24 @@
 namespace App\Repositories\Eloquent;
 
 use App\Exceptions\BadQueryParamsException;
-use App\Models\Survey;
-use App\Repositories\Interfaces\SurveyRepositoryInterface;
+use App\Models\SurveyCollector;
+use App\Repositories\Interfaces\SurveyCollectorRepositoryInterface;
 use Symfony\Component\HttpFoundation\Response;
 
-
-class SurveyRepository extends BaseRepository implements SurveyRepositoryInterface
+class SurveyCollectorRepository extends BaseRepository implements SurveyCollectorRepositoryInterface
 {
     protected function getModel(): string
     {
-        return Survey::class;
+        return SurveyCollector::class;
     }
 
-    public function findByCreatorId(string $authorId, string|null $sort)
+    public function findBySurveyId(string $surveyId, string|null $sort)
     {
         $builder = $this->model
-            ->where("author_id", $authorId);
+            ->where("survey_id", $surveyId);
 
         if ($sort) {
-            $allowedSortColumns = ["created_at", "updated_at", "title", "responses_count", "questions_count"];
+            $allowedSortColumns = ["name", "updated_at", "status", "responses_count"];
             foreach (explode(",", $sort) as $column) {
                 $formatedColumn = $column[0] === "-"
                     ? substr($column, 1)
@@ -44,6 +43,7 @@ class SurveyRepository extends BaseRepository implements SurveyRepositoryInterfa
         } else {
             $builder->orderBy("created_at", "asc");
         }
+
 
         return $builder->paginate()->appends("sort", $sort);
     }

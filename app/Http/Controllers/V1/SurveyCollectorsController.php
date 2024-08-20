@@ -4,66 +4,46 @@ namespace App\Http\Controllers\V1;
 
 use App\Enums\CollectorStatusEnum;
 use App\Enums\CollectorTypeEnum;
-use App\Exceptions\BadQueryParamsException;
 use App\Exceptions\ResourceNotFoundException;
-use App\Http\Controllers\Controller;
+use App\Exceptions\UnauthorizedException;
+use App\Http\Controllers\BaseController;
 use App\Http\Requests\V1\StoreCollectorRequest;
 use App\Http\Resources\V1\CollectorResource;
 use App\Models\Survey;
 use App\Models\SurveyCollector;
+use App\Repositories\Eloquent\Value\Relationship;
+use App\Repositories\Interfaces\SurveyCollectorRepositoryInterface;
+use App\Repositories\Interfaces\SurveyRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpFoundation\Response;
 
-class SurveyCollectorsController extends Controller
+class SurveyCollectorsController extends BaseController
 {
+    private SurveyRepositoryInterface $surveyRepository;
+    private SurveyCollectorRepositoryInterface $surveyCollectorRepository;
+
+    public function __construct(
+        SurveyRepositoryInterface $surveyRepository,
+        SurveyCollectorRepositoryInterface $surveyCollectorRepository
+    ) {
+        $this->surveyRepository = $surveyRepository;
+        $this->surveyCollectorRepository = $surveyCollectorRepository;
+    }
     public function index(Request $request, string $survey_id)
     {
-        $survey = Survey::find($survey_id);
-
-        if (!$survey) {
-            throw new ResourceNotFoundException("Survye resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $survey = $this->surveyRepository->findById($survey_id);
 
         if ($request->user()->cannot("viewSurveyCollectors", [SurveyCollector::class, $survey])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
-
-        $builder = SurveyCollector::where("survey_id", $survey_id)->withCount("responses");
         $querySort = $request->query("sort");
 
-        if ($querySort) {
-            $allowedSortColumns = ["name", "updated_at", "status", "responses_count"];
-            foreach (explode(",", $querySort) as $column) {
-                $formatedColumn = $column[0] === "-"
-                    ? substr($column, 1)
-                    : $column;
+        $collectors = $this->surveyCollectorRepository
+            ->loadRelationCount(new Relationship(name: "surveyResponses"))
+            ->findBySurveyId($survey_id, $querySort);
 
-                if (!in_array($formatedColumn, $allowedSortColumns)) {
-                    throw new BadQueryParamsException("Bad params provided", Response::HTTP_BAD_REQUEST);
-                }
-            }
-
-            $sortArr = array_map(function ($column) {
-                return $column[0] === "-"
-                    ? [substr($column, 1), "desc"]
-                    : [$column, "asc"];
-            }, explode(",", $querySort));
-
-            foreach ($sortArr as $sort) {
-                $builder->orderBy($sort[0], $sort[1]);
-            }
-        } else {
-            $builder->orderBy("created_at", "asc");
-        }
-
-        return CollectorResource::collection(
-            $builder->paginate()->appends("sort", $querySort)
-        );
+        return $this->resourceResponse(CollectorResource::class, $collectors);
     }
     public function store(StoreCollectorRequest $request, string $survey_id)
     {
@@ -74,10 +54,7 @@ class SurveyCollectorsController extends Controller
         }
 
         if ($request->user()->cannot("create", [SurveyCollector::class, $survey])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
         $createCollectorData = $request->validated();

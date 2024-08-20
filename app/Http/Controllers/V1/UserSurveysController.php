@@ -2,60 +2,36 @@
 
 namespace App\Http\Controllers\V1;
 
-use App\Exceptions\BadQueryParamsException;
-use App\Http\Controllers\Controller;
+use App\Exceptions\UnauthorizedException;
+use App\Http\Controllers\BaseController;
 use App\Http\Requests\V1\StoreUserSurveyRequest;
 use App\Http\Resources\V1\SurveyResource;
 use App\Models\Survey;
+use App\Repositories\Interfaces\SurveyRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\UnauthorizedException;
-use Symfony\Component\HttpFoundation\Response;
 
 
 
-class UserSurveysController extends Controller
+class UserSurveysController extends BaseController
 {
+    private SurveyRepositoryInterface $surveyRepository;
+
+    public function __construct(SurveyRepositoryInterface $surveyRepository)
+    {
+        $this->surveyRepository = $surveyRepository;
+    }
     public function index(Request $request, string $author_id)
     {
         if ($request->user()->cannot("viewUserSurveys", [Survey::class, $author_id])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
-        $builder = Survey::where("author_id", $author_id)->withCount(["questions", "responses", "pages"]);
         $querySort = $request->query("sort");
 
-        if ($querySort) {
-            $allowedSortColumns = ["created_at", "updated_at", "title", "responses_count", "questions_count"];
-            foreach (explode(",", $querySort) as $column) {
-                $formatedColumn = $column[0] === "-"
-                    ? substr($column, 1)
-                    : $column;
+        $surveys = $this->surveyRepository->findByCreatorId($author_id, $querySort);
 
-                if (!in_array($formatedColumn, $allowedSortColumns)) {
-                    throw new BadQueryParamsException("Bad params provided", Response::HTTP_BAD_REQUEST);
-                }
-            }
-
-            $sortArr = array_map(function ($column) {
-                return $column[0] === "-"
-                    ? [substr($column, 1), "desc"]
-                    : [$column, "asc"];
-            }, explode(",", $querySort));
-
-            foreach ($sortArr as $sort) {
-                $builder->orderBy($sort[0], $sort[1]);
-            }
-        } else {
-            $builder->orderBy("created_at", "asc");
-        }
-
-        return SurveyResource::collection(
-            $builder->paginate()->appends("sort", $querySort)
-        );
+        return $this->resourceResponse(SurveyResource::class, $surveys);
     }
 
     public function store(StoreUserSurveyRequest $request, string $author_id)

@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Repositories\Interfaces;
+use App\Repositories\Eloquent\Value\Relationship;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -43,7 +44,11 @@ interface RepositoryInterface
      * @return T
      *
      */
-    public function findById(int $id, array $columns = self::DEFAULT_COLUMNS): Model;
+    public function findById(string $id, array $columns = self::DEFAULT_COLUMNS): Model;
+    public function findWhere(array $where, array $columns = self::DEFAULT_COLUMNS): Collection;
+    public function findFirstWhere(array $where, array $columns = self::DEFAULT_COLUMNS): ?Model;
+    public function loadRelation(string|Relationship $relationship): static;
+    public function loadRelationCount(Relationship $relationship): static;
 
     /**
      * @param array $attributes

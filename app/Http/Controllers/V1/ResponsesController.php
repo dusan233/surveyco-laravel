@@ -2,69 +2,64 @@
 
 namespace App\Http\Controllers\V1;
 
-use App\Exceptions\ResourceNotFoundException;
-use App\Http\Controllers\Controller;
+use App\Exceptions\UnauthorizedException;
+use App\Http\Controllers\BaseController;
 use App\Http\Resources\V1\QuestionResource;
 use App\Http\Resources\V1\SurveyResponseResource;
-use App\Models\SurveyPage;
 use App\Models\SurveyResponse;
+use App\Repositories\Interfaces\QuestionRepositoryInterface;
+use App\Repositories\Interfaces\SurveyPageRepositoryInterface;
+use App\Repositories\Interfaces\SurveyResponseRepositoryInterface;
 use Illuminate\Http\Request;
-use Illuminate\Validation\UnauthorizedException;
-use Symfony\Component\HttpFoundation\Response;
 
-class ResponsesController extends Controller
+class ResponsesController extends BaseController
 {
+    private SurveyResponseRepositoryInterface $surveyResponseRepository;
+    private SurveyPageRepositoryInterface $surveyPageRepository;
+    private QuestionRepositoryInterface $questionRepository;
+
+    public function __construct(
+        SurveyResponseRepositoryInterface $surveyResponseRepository,
+        SurveyPageRepositoryInterface $surveyPageRepository,
+        QuestionRepositoryInterface $questionRepository,
+    ) {
+        $this->surveyResponseRepository = $surveyResponseRepository;
+        $this->surveyPageRepository = $surveyPageRepository;
+        $this->questionRepository = $questionRepository;
+    }
     public function show(Request $request, string $response_id)
     {
-        $surveyResponse = SurveyResponse::find($response_id);
-
-        if (!$surveyResponse) {
-            throw new ResourceNotFoundException("Survey response resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $surveyResponse = $this->surveyResponseRepository->findById($response_id);
 
         if ($request->user()->cannot("view", [SurveyResponse::class, $surveyResponse])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
-        return new SurveyResponseResource($surveyResponse);
+        return $this->resourceResponse(SurveyResponseResource::class, $surveyResponse);
     }
 
     public function details(Request $request, string $response_id)
     {
-        $surveyResponse = SurveyResponse::find($response_id);
-
-        if (!$surveyResponse) {
-            throw new ResourceNotFoundException("Survey response resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $surveyResponse = $this->surveyResponseRepository->findById($response_id);
 
         if ($request->user()->cannot("view", [SurveyResponse::class, $surveyResponse])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
         $page = $request->query("page") ? (int) $request->query("page") : 1;
         $surveyId = $surveyResponse->surveyCollector->survey_id;
 
-        $surveyPage = SurveyPage::where("survey_id", $surveyId)
-            ->where("display_number", $page)
-            ->first();
+        $surveyPage = $this->surveyPageRepository
+            ->findFirstWhere([
+                "survey_id" => $surveyId,
+                "display_number" => $page,
+            ]);
 
         if (!$surveyPage) {
-            throw new ResourceNotFoundException("Survey page resource not found", Response::HTTP_NOT_FOUND);
+            return $this->notFoundResponse();
         }
 
-        $pageQuestions = $surveyPage->questions()->with([
-            "questionResponses" => function ($query) use ($response_id) {
-                $query->where("survey_response_id", $response_id)
-                    ->with("questionResponseAnswers");
-            },
-            "choices"
-        ])->get();
+        $pageQuestions = $this->questionRepository->findWithAnswers($surveyPage->id, $surveyResponse->id);
 
         return response()->json([
             "data" => [

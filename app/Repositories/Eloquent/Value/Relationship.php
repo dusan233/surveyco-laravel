@@ -5,9 +5,8 @@ namespace App\Repositories\Eloquent\Value;
 readonly class Relationship
 {
     public function __construct(
+        private string $name,
         private ?array $nested = [],
-
-        private string $name = null,
     ) {
     }
 

@@ -3,27 +3,31 @@
 namespace App\Http\Controllers\V1;
 
 use App\Exceptions\ResourceNotFoundException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\BaseController;
 use App\Http\Requests\V1\UpdateCollectorRequest;
 use App\Http\Requests\V1\UpdateCollectorStatusRequest;
 use App\Http\Resources\V1\CollectorResource;
 use App\Models\SurveyCollector;
+use App\Repositories\Interfaces\SurveyCollectorRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpFoundation\Response;
 
-class CollectorsController extends Controller
+class CollectorsController extends BaseController
 {
+    private SurveyCollectorRepositoryInterface $surveyCollectorRepository;
+
+    public function __construct(
+        SurveyCollectorRepositoryInterface $surveyCollectorRepository
+    ) {
+        $this->surveyCollectorRepository = $surveyCollectorRepository;
+    }
     public function show(string $collector_id)
     {
-        $collector = SurveyCollector::find($collector_id);
+        $collector = $this->surveyCollectorRepository->findById($collector_id);
 
-        if (!$collector) {
-            throw new ResourceNotFoundException("Collector resource not found", Response::HTTP_NOT_FOUND);
-        }
-
-        return new CollectorResource($collector);
+        return $this->resourceResponse(CollectorResource::class, $collector);
     }
     public function update(UpdateCollectorRequest $request, string $collector_id)
     {

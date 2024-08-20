@@ -3,35 +3,54 @@
 namespace App\Http\Controllers\V1;
 
 use App\Exceptions\ResourceNotFoundException;
+use App\Http\Controllers\BaseController;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\V1\QuestionResource;
 use App\Http\Resources\V1\QuestionRollupResource;
 use App\Http\Resources\V1\SurveyPageResource;
 use App\Models\Question;
 use App\Models\Survey;
 use App\Models\SurveyPage;
 use App\Models\SurveyResponse;
+use App\Repositories\Eloquent\SurveyPageRepository;
+use App\Repositories\Eloquent\Value\Relationship;
+use App\Repositories\Interfaces\QuestionRepositoryInterface;
+use App\Repositories\Interfaces\SurveyPageRepositoryInterface;
+use App\Repositories\Interfaces\SurveyRepositoryInterface;
+use App\Repositories\Interfaces\SurveyResponseRepositoryInterface;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpFoundation\Response;
 
-class SurveyPagesController extends Controller
+class SurveyPagesController extends BaseController
 {
-    public function index(Request $request, string $survey_id)
+    private SurveyRepositoryInterface $surveyRepository;
+    private SurveyPageRepositoryInterface $surveyPageRepository;
+    private SurveyResponseRepositoryInterface $surveyResponseRepository;
+    private QuestionRepositoryInterface $questionRepository;
+
+    public function __construct(
+        SurveyRepositoryInterface $surveyRepository,
+        SurveyPageRepositoryInterface $surveyPageRepository,
+        SurveyResponseRepositoryInterface $surveyResponseRepository,
+        QuestionRepositoryInterface $questionRepository,
+    ) {
+        $this->surveyRepository = $surveyRepository;
+        $this->surveyPageRepository = $surveyPageRepository;
+        $this->surveyResponseRepository = $surveyResponseRepository;
+        $this->questionRepository = $questionRepository;
+    }
+    public function index(string $survey_id)
     {
-        $survey = Survey::find($survey_id);
+        $this->surveyRepository->findById($survey_id);
 
-        if (!$survey) {
-            throw new ResourceNotFoundException("Survey resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $pages = $this->surveyPageRepository
+            ->loadRelationCount(new Relationship(name: "questions"))
+            ->findBySurveyId($survey_id);
 
-        $pages = SurveyPage::where("survey_id", $survey_id)
-            ->orderBy("display_number", "asc")
-            ->withCount("questions")
-            ->get();
-
-        return SurveyPageResource::collection($pages);
+        return $this->resourceResponse(SurveyPageResource::class, $pages);
     }
     public function store(Request $request, string $survey_id)
     {
@@ -71,33 +90,21 @@ class SurveyPagesController extends Controller
 
     public function rollups(Request $request, string $survey_id, string $page_id)
     {
-        $surveyPage = SurveyPage::find($page_id);
-
-        if (!$surveyPage) {
-            throw new ResourceNotFoundException("Survey resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $surveyPage = $this->surveyPageRepository->findById($page_id);
 
         if ($surveyPage->survey_id !== $survey_id) {
             throw new BadRequestException("Invalid data provided", Response::HTTP_BAD_REQUEST);
         }
 
-        $surveyResponseCount = SurveyResponse::whereHas('surveyCollector', function ($query) use ($survey_id) {
-            $query->where('survey_id', $survey_id);
-        })->count();
+        $surveyResponseCount = $this->surveyResponseRepository->countBySurveyId($survey_id);
 
-        $pageQuestions = Question::where("survey_page_id", $page_id)
-            ->withCount("questionResponses")
-            ->with([
-                "choices" => function ($query) {
-                    $query->withCount("questionResponseAnswers");
-                },
-            ])
-            ->get()
+        $pageQuestions = $this->questionRepository
+            ->resultSummariesByPageId($page_id)
             ->map(function ($question) use ($surveyResponseCount) {
                 $question->survey_responses_count = $surveyResponseCount;
                 return $question;
             });
 
-        return QuestionRollupResource::collection($pageQuestions);
+        return $this->resourceResponse(QuestionRollupResource::class, $pageQuestions);
     }
 }

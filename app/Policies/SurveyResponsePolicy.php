@@ -13,7 +13,7 @@ class SurveyResponsePolicy
      */
     public function viewSurveyResponses(User $user, Survey $survey): bool
     {
-        return $user->id === "dw";
+        return $user->id === $survey->author_id;
     }
 
     public function view(User $user, SurveyResponse $surveyResponse): bool

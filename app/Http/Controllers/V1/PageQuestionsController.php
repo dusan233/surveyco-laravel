@@ -4,31 +4,39 @@ namespace App\Http\Controllers\V1;
 
 use App\Enums\QuestionTypeEnum;
 use App\Exceptions\ResourceNotFoundException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\BaseController;
 use App\Http\Requests\V1\StorePageQuestionRequest;
 use App\Http\Resources\V1\QuestionResource;
 use App\Models\Question;
 use App\Models\SurveyPage;
+use App\Repositories\Eloquent\Value\Relationship;
+use App\Repositories\Interfaces\QuestionRepositoryInterface;
+use App\Repositories\Interfaces\SurveyPageRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpFoundation\Response;
 
-class PageQuestionsController extends Controller
+class PageQuestionsController extends BaseController
 {
+    private QuestionRepositoryInterface $questionRepository;
+    private SurveyPageRepositoryInterface $surveyPageRepository;
+
+    public function __construct(
+        QuestionRepositoryInterface $questionRepository,
+        SurveyPageRepositoryInterface $surveyPageRepository,
+    ) {
+        $this->questionRepository = $questionRepository;
+        $this->surveyPageRepository = $surveyPageRepository;
+    }
     public function index(string $page_id)
     {
-        $surveyPage = SurveyPage::find($page_id);
+        $page = $this->surveyPageRepository->findById($page_id);
 
-        if (!$surveyPage) {
-            throw new ResourceNotFoundException("Survey resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $questions = $this->questionRepository
+            ->loadRelation(new Relationship(name: "choices"))
+            ->findByPageId($page->id);
 
-        $questions = Question::where("survey_page_id", $page_id)
-            ->orderBy("display_number", "asc")
-            ->with("choices")
-            ->get();
-
-        return QuestionResource::collection($questions);
+        return $this->resourceResponse(QuestionResource::class, $questions);
     }
 
 

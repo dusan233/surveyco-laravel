@@ -32,9 +32,26 @@ abstract class BaseRepository implements RepositoryInterface
 
         return $results;
     }
-    public function findById(int $id, array $columns = self::DEFAULT_COLUMNS): Model
+    public function findById(string $id, array $columns = self::DEFAULT_COLUMNS): Model
     {
         return $this->model->findOrFail($id, $columns);
+    }
+
+    public function findWhere(array $where, array $columns = self::DEFAULT_COLUMNS): Collection
+    {
+        $this->applyConditions($where);
+        $model = $this->model->get($columns);
+        $this->resetModel();
+
+        return $model;
+    }
+    public function findFirstWhere(array $where, array $columns = self::DEFAULT_COLUMNS): ?Model
+    {
+        $this->applyConditions($where);
+        $model = $this->model->first($columns);
+        $this->resetModel();
+
+        return $model;
     }
     public function all(array $columns = self::DEFAULT_COLUMNS): Collection
     {

@@ -2,27 +2,32 @@
 
 namespace App\Http\Controllers\V1;
 
-use App\Exceptions\ResourceNotFoundException;
-use App\Http\Controllers\Controller;
+use App\Http\Controllers\BaseController;
 use App\Http\Resources\V1\SurveyResource;
-use App\Models\Survey;
+use App\Repositories\Eloquent\Value\Relationship;
+use App\Repositories\Interfaces\SurveyRepositoryInterface;
 use Illuminate\Http\Request;
-use Symfony\Component\HttpFoundation\Response;
 
-class SurveysController extends Controller
+class SurveysController extends BaseController
 {
+    private SurveyRepositoryInterface $surveyRepository;
+
+    public function __construct(SurveyRepositoryInterface $surveyRepository)
+    {
+        $this->surveyRepository = $surveyRepository;
+    }
     /**
      * Display the specified resource.
      */
     public function show(string $survey_id)
     {
-        $survey = Survey::find($survey_id)->loadCount(["questions", "pages", "responses"]);
+        $survey = $this->surveyRepository
+            ->loadRelationCount(new Relationship(name: "questions"))
+            ->loadRelationCount(new Relationship(name: "pages"))
+            ->loadRelationCount(new Relationship(name: "responses"))
+            ->findById($survey_id);
 
-        if (!$survey) {
-            throw new ResourceNotFoundException("Survey resource not found", Response::HTTP_NOT_FOUND);
-        }
-
-        return new SurveyResource($survey);
+        return $this->resourceResponse(SurveyResource::class, $survey);
     }
 
     /**
