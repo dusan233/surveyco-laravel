@@ -8,18 +8,23 @@ use App\Http\Requests\V1\StoreUserSurveyRequest;
 use App\Http\Resources\V1\SurveyResource;
 use App\Models\Survey;
 use App\Repositories\Interfaces\SurveyRepositoryInterface;
+use App\Services\Handlers\Survey\CreateSurveyHandler;
+use App\Services\Handlers\Survey\DTO\CreateSurveyDTO;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 
 
 class UserSurveysController extends BaseController
 {
     private SurveyRepositoryInterface $surveyRepository;
+    private CreateSurveyHandler $createSurveyHandler;
 
-    public function __construct(SurveyRepositoryInterface $surveyRepository)
-    {
+    public function __construct(
+        SurveyRepositoryInterface $surveyRepository,
+        CreateSurveyHandler $createSurveyHandler
+    ) {
         $this->surveyRepository = $surveyRepository;
+        $this->createSurveyHandler = $createSurveyHandler;
     }
     public function index(Request $request, string $author_id)
     {
@@ -36,34 +41,20 @@ class UserSurveysController extends BaseController
 
     public function store(StoreUserSurveyRequest $request, string $author_id)
     {
-
         if ($request->user()->cannot("create", Survey::class)) {
-            return response()->json([
-                "error" => "You can not create surveys"
-            ]);
+            return new UnauthorizedException();
         }
 
-        $surveyData = $request->validated();
+        $surveyData = array_merge($request->validated(), [
+            'author_id' => $author_id,
+        ]);
 
-        DB::beginTransaction();
-        try {
-            $survey = Survey::create([
-                "title" => $surveyData["title"],
-                "category" => $surveyData["category"],
-                "author_id" => $author_id
-            ]);
+        $survey = $this->createSurveyHandler->handle(new CreateSurveyDTO(
+            $surveyData["title"],
+            $surveyData["category"],
+            $surveyData["author_id"],
+        ));
 
-            $survey->pages()->create([
-                "display_number" => 1,
-                "survey_id" => $survey->id
-            ]);
-
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-
-        return new SurveyResource($survey);
+        return $this->resourceResponse(SurveyResource::class, $survey);
     }
 }
