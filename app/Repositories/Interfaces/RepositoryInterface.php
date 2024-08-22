@@ -44,6 +44,7 @@ interface RepositoryInterface
      * @return T
      *
      */
+    public function lockForUpdate(): static;
     public function findById(string $id, array $columns = self::DEFAULT_COLUMNS): Model;
     public function findWhere(array $where, array $columns = self::DEFAULT_COLUMNS): Collection;
     public function findFirstWhere(array $where, array $columns = self::DEFAULT_COLUMNS): ?Model;

@@ -11,6 +11,7 @@ use App\Repositories\Interfaces\SurveyRepositoryInterface;
 use App\Services\Handlers\Survey\CreateSurveyHandler;
 use App\Services\Handlers\Survey\DTO\CreateSurveyDTO;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 
 
@@ -55,6 +56,6 @@ class UserSurveysController extends BaseController
             $surveyData["author_id"],
         ));
 
-        return $this->resourceResponse(SurveyResource::class, $survey);
+        return $this->resourceResponse(SurveyResource::class, $survey, Response::HTTP_CREATED);
     }
 }

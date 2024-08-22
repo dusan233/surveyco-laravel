@@ -58,6 +58,12 @@ abstract class BaseRepository implements RepositoryInterface
         return $this->model->all($columns);
     }
 
+    public function lockForUpdate(): static
+    {
+        $this->model = $this->model->lockForUpdate();
+        return $this;
+    }
+
     public function create(array $attributes): Model
     {
         $model = $this->model->newInstance(collect($attributes)->toArray());

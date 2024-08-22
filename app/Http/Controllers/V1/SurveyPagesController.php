@@ -2,25 +2,20 @@
 
 namespace App\Http\Controllers\V1;
 
-use App\Exceptions\ResourceNotFoundException;
+use App\Exceptions\UnauthorizedException;
 use App\Http\Controllers\BaseController;
-use App\Http\Controllers\Controller;
-use App\Http\Resources\V1\QuestionResource;
 use App\Http\Resources\V1\QuestionRollupResource;
 use App\Http\Resources\V1\SurveyPageResource;
-use App\Models\Question;
-use App\Models\Survey;
 use App\Models\SurveyPage;
-use App\Models\SurveyResponse;
-use App\Repositories\Eloquent\SurveyPageRepository;
 use App\Repositories\Eloquent\Value\Relationship;
 use App\Repositories\Interfaces\QuestionRepositoryInterface;
 use App\Repositories\Interfaces\SurveyPageRepositoryInterface;
 use App\Repositories\Interfaces\SurveyRepositoryInterface;
 use App\Repositories\Interfaces\SurveyResponseRepositoryInterface;
+use App\Services\Handlers\SurveyPage\CreateSurveyPageHandler;
+use App\Services\Handlers\SurveyPage\DTO\CreateSurveyPageDTO;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\UnauthorizedException;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -30,17 +25,20 @@ class SurveyPagesController extends BaseController
     private SurveyPageRepositoryInterface $surveyPageRepository;
     private SurveyResponseRepositoryInterface $surveyResponseRepository;
     private QuestionRepositoryInterface $questionRepository;
+    private CreateSurveyPageHandler $createSurveyPageHandler;
 
     public function __construct(
         SurveyRepositoryInterface $surveyRepository,
         SurveyPageRepositoryInterface $surveyPageRepository,
         SurveyResponseRepositoryInterface $surveyResponseRepository,
         QuestionRepositoryInterface $questionRepository,
+        CreateSurveyPageHandler $createSurveyPageHandler,
     ) {
         $this->surveyRepository = $surveyRepository;
         $this->surveyPageRepository = $surveyPageRepository;
         $this->surveyResponseRepository = $surveyResponseRepository;
         $this->questionRepository = $questionRepository;
+        $this->createSurveyPageHandler = $createSurveyPageHandler;
     }
     public function index(string $survey_id)
     {
@@ -54,38 +52,15 @@ class SurveyPagesController extends BaseController
     }
     public function store(Request $request, string $survey_id)
     {
-        $survey = Survey::find($survey_id);
-
-        if (!$survey) {
-            throw new ResourceNotFoundException("Survey resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $survey = $this->surveyRepository->findById($survey_id);
 
         if ($request->user()->cannot("create", [SurveyPage::class, $survey])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
-        DB::beginTransaction();
-        try {
-            $newPagePosition = $survey->pages()
-                ->orderByDesc("display_number")
-                ->lockForUpdate()
-                ->first()->display_number + 1;
+        $surveyPage = $this->createSurveyPageHandler->handle(new CreateSurveyPageDTO($survey_id));
 
-            $surveyPage = SurveyPage::create([
-                "survey_id" => $survey_id,
-                "display_number" => $newPagePosition,
-            ]);
-
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
-        }
-
-        return new SurveyPageResource($surveyPage);
+        return $this->resourceResponse(SurveyPageResource::class, $surveyPage, Response::HTTP_CREATED);
     }
 
     public function rollups(Request $request, string $survey_id, string $page_id)
