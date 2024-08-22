@@ -14,6 +14,20 @@ class SurveyCollectorRepository extends BaseRepository implements SurveyCollecto
         return SurveyCollector::class;
     }
 
+    public function countBySurveyId(string $surveyId, ?string $type): int
+    {
+        $this->model = $this->model->where("survey_id", $surveyId);
+
+        if (isset($type)) {
+            $this->model = $this->model->where("type", $type);
+        }
+
+        $count = $this->model->count();
+        $this->resetModel();
+
+        return $count;
+    }
+
     public function findBySurveyId(string $surveyId, string|null $sort)
     {
         $builder = $this->model
