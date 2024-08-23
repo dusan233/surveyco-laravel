@@ -2,12 +2,16 @@
 
 namespace App\Providers;
 
+use App\Repositories\Eloquent\QuestionChoiceRepository;
 use App\Repositories\Eloquent\QuestionRepository;
+use App\Repositories\Eloquent\QuestionResponseRepository;
 use App\Repositories\Eloquent\SurveyCollectorRepository;
 use App\Repositories\Eloquent\SurveyPageRepository;
 use App\Repositories\Eloquent\SurveyRepository;
 use App\Repositories\Eloquent\SurveyResponseRepository;
+use App\Repositories\Interfaces\QuestionChoiceRepositoryInterface;
 use App\Repositories\Interfaces\QuestionRepositoryInterface;
+use App\Repositories\Interfaces\QuestionResponseRepositoryInterface;
 use App\Repositories\Interfaces\SurveyCollectorRepositoryInterface;
 use App\Repositories\Interfaces\SurveyPageRepositoryInterface;
 use App\Repositories\Interfaces\SurveyRepositoryInterface;
@@ -22,6 +26,8 @@ class RepositoryServiceProvider extends ServiceProvider
         SurveyCollectorRepositoryInterface::class => SurveyCollectorRepository::class,
         SurveyResponseRepositoryInterface::class => SurveyResponseRepository::class,
         QuestionRepositoryInterface::class => QuestionRepository::class,
+        QuestionChoiceRepositoryInterface::class => QuestionChoiceRepository::class,
+        QuestionResponseRepositoryInterface::class => QuestionResponseRepository::class,
     ];
     /**
      * Register services.

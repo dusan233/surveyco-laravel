@@ -73,7 +73,16 @@ abstract class BaseRepository implements RepositoryInterface
         return $model;
     }
 
-    public function updateByIdWhere(int $id, array $attributes, array $where): Model
+    public function updateById(string $id, array $attributes): Model
+    {
+        $model = $this->model->findOrFail($id);
+        $model->update($attributes);
+        $this->resetModel();
+
+        return $model;
+    }
+
+    public function updateByIdWhere(string $id, array $attributes, array $where): Model
     {
         $model = $this->model->where($where)->findOrFail($id);
         $model->update($attributes);
@@ -82,7 +91,7 @@ abstract class BaseRepository implements RepositoryInterface
         return $model;
     }
 
-    public function deleteById(int $id): bool
+    public function deleteById(string $id): bool
     {
         return $this->model->findOrFail($id)->delete();
     }
@@ -111,6 +120,30 @@ abstract class BaseRepository implements RepositoryInterface
     {
         $this->applyConditions($conditions);
         $deleted = $this->model->delete();
+        $this->resetModel();
+
+        return $deleted;
+    }
+
+    public function upsert(
+        array $values,
+        array|string $uniqueBy,
+        array|null $update = null
+    ): int {
+        $count = $this->model->upsert(
+            $values,
+            $uniqueBy,
+            $update
+        );
+        $this->resetModel();
+
+        return $count;
+    }
+
+    public function forceDeleteWhere(array $conditions): int
+    {
+        $this->applyConditions($conditions);
+        $deleted = $this->model->forceDelete();
         $this->resetModel();
 
         return $deleted;

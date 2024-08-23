@@ -50,7 +50,11 @@ interface RepositoryInterface
     public function findFirstWhere(array $where, array $columns = self::DEFAULT_COLUMNS): ?Model;
     public function loadRelation(string|Relationship $relationship): static;
     public function loadRelationCount(Relationship $relationship): static;
-
+    public function upsert(
+        array $values,
+        array|string $uniqueBy,
+        array|null $update = null
+    ): int;
     /**
      * @param array $attributes
      * @return T
@@ -63,12 +67,13 @@ interface RepositoryInterface
      * @param array $where
      * @return T
      */
-    public function updateByIdWhere(int $id, array $attributes, array $where): Model;
+    public function updateByIdWhere(string $id, array $attributes, array $where): Model;
+    public function updateById(string $id, array $attributes): Model;
 
-    public function deleteById(int $id): bool;
+    public function deleteById(string $id): bool;
 
     public function deleteWhere(array $conditions): int;
-
+    public function forceDeleteWhere(array $conditions): int;
     public function increment(int|float $id, string $column, int|float $amount = 1): int;
 
     public function decrement(int|float $id, string $column, int|float $amount = 1): int;

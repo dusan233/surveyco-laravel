@@ -4,6 +4,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\Question;
 use App\Repositories\Interfaces\QuestionRepositoryInterface;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
 
@@ -20,6 +21,25 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
         return $this->findWhere([
             "survey_page_id" => $pageId
         ]);
+    }
+
+    public function findLastByPageId(string $pageId): Model|null
+    {
+        $this->model = $this->model->orderByDesc("display_number");
+
+        return $this->findFirstWhere([
+            "survey_page_id" => $pageId
+        ]);
+    }
+
+    public function countByPageId(string $pageId): int
+    {
+        $this->model = $this->model->where("survey_page_id", $pageId);
+
+        $count = $this->model->count();
+        $this->resetModel();
+
+        return $count;
     }
 
     public function findWithAnswers(string $pageId, string $responseId): Collection
