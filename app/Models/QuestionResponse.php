@@ -22,6 +22,11 @@ class QuestionResponse extends Model
         return $this->belongsTo(Question::class);
     }
 
+    public function surveyResponse(): BelongsTo
+    {
+        return $this->belongsTo(SurveyResponse::class);
+    }
+
     public function questionResponseAnswers(): HasMany
     {
         return $this->hasMany(QuestionResponseAnswer::class);

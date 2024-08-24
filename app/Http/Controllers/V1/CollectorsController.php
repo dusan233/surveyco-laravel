@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\V1;
 
-use App\Exceptions\ResourceNotFoundException;
 use App\Exceptions\UnauthorizedException;
 use App\Http\Controllers\BaseController;
 use App\Http\Requests\V1\UpdateCollectorRequest;
@@ -10,28 +9,30 @@ use App\Http\Requests\V1\UpdateCollectorStatusRequest;
 use App\Http\Resources\V1\CollectorResource;
 use App\Models\SurveyCollector;
 use App\Repositories\Interfaces\SurveyCollectorRepositoryInterface;
+use App\Services\Handlers\SurveyCollector\DeleteCollectorHandler;
 use App\Services\Handlers\SurveyCollector\DTO\UpdateCollectorDTO;
 use App\Services\Handlers\SurveyCollector\DTO\UpdateCollectorStatusDTO;
 use App\Services\Handlers\SurveyCollector\UpdateCollectorHandler;
 use App\Services\Handlers\SurveyCollector\UpdateCollectorStatusHandler;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpFoundation\Response;
 
 class CollectorsController extends BaseController
 {
     private SurveyCollectorRepositoryInterface $surveyCollectorRepository;
     private UpdateCollectorStatusHandler $updateCollectorStatusHandler;
     private UpdateCollectorHandler $updateCollectorHandler;
+    private DeleteCollectorHandler $deleteCollectorHandler;
 
     public function __construct(
         SurveyCollectorRepositoryInterface $surveyCollectorRepository,
         UpdateCollectorStatusHandler $updateCollectorStatusHandler,
-        UpdateCollectorHandler $updateCollectorHandler
+        UpdateCollectorHandler $updateCollectorHandler,
+        DeleteCollectorHandler $deleteCollectorHandler
     ) {
         $this->surveyCollectorRepository = $surveyCollectorRepository;
         $this->updateCollectorStatusHandler = $updateCollectorStatusHandler;
         $this->updateCollectorHandler = $updateCollectorHandler;
+        $this->deleteCollectorHandler = $deleteCollectorHandler;
     }
     public function show(string $collector_id)
     {
@@ -77,31 +78,14 @@ class CollectorsController extends BaseController
 
     public function destroy(Request $request, string $collector_id)
     {
-        $collector = SurveyCollector::find($collector_id);
-
-        if (!$collector) {
-            throw new ResourceNotFoundException("Collector resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $collector = $this->surveyCollectorRepository->findById($collector_id);
 
         if ($request->user()->cannot("delete", [SurveyCollector::class, $collector])) {
             throw new UnauthorizedException();
         }
 
-        try {
-            DB::beginTransaction();
+        $this->deleteCollectorHandler->handle($collector_id);
 
-            SurveyCollector::where("id", $collector_id)
-                ->delete();
-
-            DB::commit();
-        } catch (\Exception $err) {
-            DB::rollBack();
-            throw $err;
-        }
-
-        return response()
-            ->json([
-                "message" => "Collector has been successfully removed"
-            ]);
+        return $this->deletedResponse();
     }
 }
