@@ -111,6 +111,15 @@ abstract class BaseRepository implements RepositoryInterface
         return $count;
     }
 
+    public function decrementWhere(array $where, string $column, int|float $amount = 1): int
+    {
+        $this->applyConditions($where);
+        $count = $this->model->decrement($column, $amount);
+        $this->resetModel();
+
+        return $count;
+    }
+
     public function decrement(int|float $id, string $column, int|float $amount = 1): int
     {
         return $this->model->findOrFail($id)?->decrement($column, $amount);

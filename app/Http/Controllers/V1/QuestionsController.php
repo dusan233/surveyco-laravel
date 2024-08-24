@@ -15,6 +15,7 @@ use App\Models\Question;
 use App\Models\QuestionChoice;
 use App\Models\SurveyPage;
 use App\Repositories\Interfaces\QuestionRepositoryInterface;
+use App\Services\Handlers\Question\DeleteQuestionHandler;
 use App\Services\Handlers\Question\DTO\UpdateQuestionChoiceDTO;
 use App\Services\Handlers\Question\DTO\UpdateQuestionDTO;
 use App\Services\Handlers\Question\UpdateQuestionHandler;
@@ -27,13 +28,16 @@ class QuestionsController extends BaseController
 {
     private QuestionRepositoryInterface $questionRepository;
     private UpdateQuestionHandler $updateQuestionHandler;
+    private DeleteQuestionHandler $deleteQuestionHandler;
 
     public function __construct(
         QuestionRepositoryInterface $questionRepository,
         UpdateQuestionHandler $updateQuestionHandler,
+        DeleteQuestionHandler $deleteQuestionHandler,
     ) {
         $this->questionRepository = $questionRepository;
         $this->updateQuestionHandler = $updateQuestionHandler;
+        $this->deleteQuestionHandler = $deleteQuestionHandler;
     }
     public function update(ReplaceQuestionRequest $request, string $question_id)
     {
@@ -72,50 +76,16 @@ class QuestionsController extends BaseController
 
     public function destroy(Request $request, string $question_id)
     {
-        $question = Question::find($question_id);
-
-        if (!$question) {
-            throw new ResourceNotFoundException("Question resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $question = $this->questionRepository->findById($question_id);
 
         if ($request->user()->cannot("delete", [Question::class, $question])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
-        try {
-            DB::beginTransaction();
+        $surveyId = $question->surveyPage->survey_id;
+        $this->deleteQuestionHandler->handle($question->id, $surveyId);
 
-            $question = Question::lockForUpdate()->find($question_id);
-            $surveyId = $question->surveyPage->survey_id;
-
-            //delete choices softly
-            if ($question->type !== QuestionTypeEnum::TEXTBOX->value) {
-                QuestionChoice::where("question_id", $question_id)->delete();
-            }
-
-            //delete question softly
-            $question->delete();
-
-            //update position for questions after deleted one
-            Question::whereHas('surveyPage', function ($query) use ($surveyId) {
-                $query->where('survey_id', $surveyId);
-            })
-                ->where('display_number', '>', $question->display_number)
-                ->decrement('display_number');
-
-            DB::commit();
-        } catch (\Exception $err) {
-            DB::rollBack();
-            throw $err;
-        }
-
-        return response()
-            ->json([
-                "message" => "Question has been successfully removed"
-            ]);
+        return $this->deletedResponse();
     }
 
 

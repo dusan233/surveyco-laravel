@@ -77,6 +77,6 @@ interface RepositoryInterface
     public function increment(int|float $id, string $column, int|float $amount = 1): int;
 
     public function decrement(int|float $id, string $column, int|float $amount = 1): int;
-
+    public function decrementWhere(array $where, string $column, int|float $amount = 1): int;
     public function incrementWhere(array $where, string $column, int|float $amount = 1): int;
 }
