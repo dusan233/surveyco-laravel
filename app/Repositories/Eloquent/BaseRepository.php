@@ -34,7 +34,10 @@ abstract class BaseRepository implements RepositoryInterface
     }
     public function findById(string $id, array $columns = self::DEFAULT_COLUMNS): Model
     {
-        return $this->model->findOrFail($id, $columns);
+        $model = $this->model->findOrFail($id, $columns);
+        $this->resetModel();
+
+        return $model;
     }
 
     public function findWhere(array $where, array $columns = self::DEFAULT_COLUMNS): Collection

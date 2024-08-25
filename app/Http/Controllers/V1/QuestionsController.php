@@ -15,7 +15,9 @@ use App\Models\Question;
 use App\Models\QuestionChoice;
 use App\Models\SurveyPage;
 use App\Repositories\Interfaces\QuestionRepositoryInterface;
+use App\Services\Handlers\Question\CopyQuestionHandler;
 use App\Services\Handlers\Question\DeleteQuestionHandler;
+use App\Services\Handlers\Question\DTO\CopyQuestionDTO;
 use App\Services\Handlers\Question\DTO\UpdateQuestionChoiceDTO;
 use App\Services\Handlers\Question\DTO\UpdateQuestionDTO;
 use App\Services\Handlers\Question\UpdateQuestionHandler;
@@ -29,15 +31,18 @@ class QuestionsController extends BaseController
     private QuestionRepositoryInterface $questionRepository;
     private UpdateQuestionHandler $updateQuestionHandler;
     private DeleteQuestionHandler $deleteQuestionHandler;
+    private CopyQuestionHandler $copyQuestionHandler;
 
     public function __construct(
         QuestionRepositoryInterface $questionRepository,
         UpdateQuestionHandler $updateQuestionHandler,
         DeleteQuestionHandler $deleteQuestionHandler,
+        CopyQuestionHandler $copyQuestionHandler,
     ) {
         $this->questionRepository = $questionRepository;
         $this->updateQuestionHandler = $updateQuestionHandler;
         $this->deleteQuestionHandler = $deleteQuestionHandler;
+        $this->copyQuestionHandler = $copyQuestionHandler;
     }
     public function update(ReplaceQuestionRequest $request, string $question_id)
     {
@@ -91,125 +96,24 @@ class QuestionsController extends BaseController
 
     public function copy(CopyQuestionRequest $request, string $source_question_id)
     {
-        $question = Question::find($source_question_id);
-
-        if (!$question) {
-            throw new ResourceNotFoundException("Question resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $question = $this->questionRepository->findById($source_question_id);
 
         if ($request->user()->cannot("copy", [Question::class, $question])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
         $surveyId = $question->surveyPage->survey_id;
         $copyQuestionData = $request->validated();
-        $newQuestionPosition = 0;
 
-        try {
-            DB::beginTransaction();
+        $newQuestion = $this->copyQuestionHandler->handle(new CopyQuestionDTO(
+            $surveyId,
+            $source_question_id,
+            $copyQuestionData["targetPageId"],
+            $copyQuestionData["position"] ?? null,
+            $copyQuestionData["targetQuestionId"] ?? null
+        ));
 
-            $targetPage = SurveyPage::withCount("questions")
-                ->lockForUpdate()
-                ->find($copyQuestionData["targetPageId"]);
-
-            if (!$targetPage || $targetPage->survey_id !== $surveyId) {
-                throw new BadRequestException("Invalid data provided", Response::HTTP_BAD_REQUEST);
-            }
-
-            $sourceQuestion = Question::lockForUpdate()->find($source_question_id);
-
-            if (!$sourceQuestion) {
-                throw new BadRequestException("Invalid data provided", Response::HTTP_BAD_REQUEST);
-            }
-
-            if ($targetPage->questions_count === 50) {
-                throw new BadRequestException("Max Questions per page exceeded", Response::HTTP_BAD_REQUEST);
-            }
-
-            if ($targetPage->questions_count !== 0) {
-                if ($copyQuestionData["targetQuestionId"]) {
-                    $targetQuestion = Question::lockForUpdate()->find($copyQuestionData["targetQuestionId"]);
-
-                    if (!$targetQuestion || $targetQuestion->surveyPage->id !== $targetPage->id) {
-                        throw new BadRequestException("Invalid data provided", Response::HTTP_BAD_REQUEST);
-                    }
-
-                    $newQuestionPosition = $copyQuestionData["position"] === PlacementPositionEnum::AFTER->value
-                        ? $targetQuestion->display_number + 1
-                        : $targetQuestion->display_number;
-                } else {
-                    $targetPageLastQuestion = Question::where("survey_page_id", $targetPage->id)
-                        ->lockForUpdate()
-                        ->orderByDesc("display_number")
-                        ->first();
-
-                    if (!$targetPageLastQuestion) {
-                        throw new BadRequestException("Invalid data provided", Response::HTTP_BAD_REQUEST);
-                    }
-
-                    $newQuestionPosition = $targetPageLastQuestion->display_number + 1;
-                }
-            } else {
-                $previousPageWithQuestions = SurveyPage::where('display_number', '<', $targetPage->display_number)
-                    ->where("survey_id", $surveyId)
-                    ->whereHas('questions')
-                    ->lockForUpdate()
-                    ->orderBy('display_number', 'desc')
-                    ->first();
-
-                if ($previousPageWithQuestions) {
-                    $previousPageWithQuestionsLastQuestion = Question::where("survey_page_id", $previousPageWithQuestions->id)
-                        ->lockForUpdate()
-                        ->orderByDesc("display_number")
-                        ->first();
-
-                    if (!$previousPageWithQuestionsLastQuestion) {
-                        throw new BadRequestException("Invalid data provided", Response::HTTP_BAD_REQUEST);
-                    }
-
-                    $newQuestionPosition = $previousPageWithQuestionsLastQuestion->display_number + 1;
-                } else {
-                    $newQuestionPosition = 1;
-                }
-            }
-
-            Question::whereHas('surveyPage', function ($query) use ($surveyId) {
-                $query->where('survey_id', $surveyId);
-            })
-                ->where('display_number', '>=', $newQuestionPosition)
-                ->increment('display_number');
-
-
-            $newQuestion = $sourceQuestion->replicate()->fill([
-                "display_number" => $newQuestionPosition,
-                "survey_page_id" => $targetPage->id
-            ]);
-            $newQuestion->save();
-
-            if ($sourceQuestion->type !== QuestionTypeEnum::TEXTBOX->value) {
-                $newQuestion->choices()->saveMany($sourceQuestion->choices()->get()->map(function ($choice) {
-                    return new QuestionChoice([
-                        "description" => $choice->description,
-                        "description_image" => $choice->description_image,
-                        "display_number" => $choice->display_number,
-                    ]);
-                }));
-
-                $newQuestion->load("choices");
-            }
-
-            $newQuestion->refresh();
-
-            DB::commit();
-        } catch (\Exception $err) {
-            DB::rollBack();
-            throw $err;
-        }
-
-        return new QuestionResource($newQuestion);
+        return $this->resourceResponse(QuestionResource::class, $newQuestion, Response::HTTP_CREATED);
     }
 
     public function move(MoveQuestionRequest $request, string $source_question_id)
