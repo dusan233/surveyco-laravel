@@ -14,6 +14,19 @@ class SurveyPageRepository extends BaseRepository implements SurveyPageRepositor
         return SurveyPage::class;
     }
 
+    public function countBySurveyId(string $surveyId): int
+    {
+        $this->applyConditions([
+            "survey_id",
+            $surveyId
+        ]);
+
+        $count = $this->model->count();
+        $this->resetModel();
+
+        return $count;
+    }
+
     public function findLastBySurveyId(string $surveyId): Model|null
     {
         $this->model = $this->model->orderByDesc("display_number");

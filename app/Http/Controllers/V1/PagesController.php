@@ -3,20 +3,18 @@
 namespace App\Http\Controllers\V1;
 
 use App\Enums\PlacementPositionEnum;
-use App\Enums\QuestionTypeEnum;
 use App\Exceptions\ResourceNotFoundException;
 use App\Exceptions\UnauthorizedException;
 use App\Http\Controllers\BaseController;
-use App\Http\Controllers\Controller;
 use App\Http\Requests\V1\CopyPageRequest;
 use App\Http\Requests\V1\MovePageRequest;
 use App\Http\Resources\V1\SurveyPageResource;
 use App\Models\Question;
-use App\Models\QuestionChoice;
 use App\Models\Survey;
 use App\Models\SurveyPage;
 use App\Repositories\Interfaces\SurveyPageRepositoryInterface;
 use App\Services\Handlers\SurveyPage\CopySurveyPageHandler;
+use App\Services\Handlers\SurveyPage\DeleteSurveyPageHandler;
 use App\Services\Handlers\SurveyPage\DTO\CopySurveyPageDTO;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,85 +25,28 @@ class PagesController extends BaseController
 {
     private SurveyPageRepositoryInterface $surveyPageRepository;
     private CopySurveyPageHandler $copySurveyPageHandler;
+    private DeleteSurveyPageHandler $deleteSurveyPageHandler;
 
     public function __construct(
         SurveyPageRepositoryInterface $surveyPageRepository,
         CopySurveyPageHandler $copySurveyPageHandler,
+        DeleteSurveyPageHandler $deleteSurveyPageHandler,
     ) {
         $this->surveyPageRepository = $surveyPageRepository;
         $this->copySurveyPageHandler = $copySurveyPageHandler;
+        $this->deleteSurveyPageHandler = $deleteSurveyPageHandler;
     }
     public function destroy(Request $request, string $page_id)
     {
-        $surveyPage = SurveyPage::find($page_id);
-
-        if (!$surveyPage) {
-            throw new ResourceNotFoundException("Survey resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $surveyPage = $this->surveyPageRepository->findById($page_id);
 
         if ($request->user()->cannot("delete", [SurveyPage::class, $surveyPage])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
-        try {
-            DB::beginTransaction();
+        $this->deleteSurveyPageHandler->handle($page_id);
 
-            $pages_count = Survey::lockForUpdate()
-                ->findOrFail($surveyPage->survey_id)
-                ->pages()
-                ->count();
-            if ($pages_count === 1) {
-                throw new BadRequestException("Survey mus have at least 1 page", Response::HTTP_BAD_REQUEST);
-            }
-
-            $targetPage = SurveyPage::withCount("questions")
-                ->lockForUpdate()
-                ->find($page_id);
-            if (!$targetPage) {
-                throw new ResourceNotFoundException("Survey resource not found", Response::HTTP_NOT_FOUND);
-            }
-
-            if ($targetPage->questions_count !== 0) {
-                $targetPageLastQuestion = Question::where("survey_page_id", $targetPage->id)
-                    ->lockForUpdate()
-                    ->orderByDesc("display_number")
-                    ->first();
-                //delete question choices
-                QuestionChoice::whereHas('question', function ($query) use ($targetPage) {
-                    $query->where('survey_page_id', $targetPage->id);
-                })->delete();
-
-                //delete questions
-                Question::where("survey_page_id", $targetPage->id)
-                    ->delete();
-
-                //update other questions positions
-                Question::whereHas('surveyPage', function ($query) use ($targetPage) {
-                    $query->where('survey_id', $targetPage->survey_id);
-                })
-                    ->where('display_number', '>', $targetPageLastQuestion->display_number)
-                    ->decrement('display_number', $targetPage->questions_count);
-            }
-
-            SurveyPage::where("survey_id", $targetPage->survey_id)
-                ->where("display_number", ">", $targetPage->display_number)
-                ->decrement("display_number");
-
-            SurveyPage::where("id", $targetPage->id)->delete();
-
-            DB::commit();
-        } catch (\Exception $err) {
-            DB::rollBack();
-            throw $err;
-        }
-
-        return response()
-            ->json([
-                "message" => "Page has been successfully removed"
-            ]);
+        return $this->deletedResponse();
     }
 
     public function copy(CopyPageRequest $request, $source_page_id)
