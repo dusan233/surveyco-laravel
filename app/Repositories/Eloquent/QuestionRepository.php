@@ -15,7 +15,7 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
         return Question::class;
     }
 
-    public function findByPageId(string $pageId)
+    public function findByPageId(string $pageId): Collection
     {
         $this->model = $this->model->orderBy("display_number", "asc");
         return $this->findWhere([
