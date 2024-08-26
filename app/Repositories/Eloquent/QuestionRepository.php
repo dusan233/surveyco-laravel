@@ -4,6 +4,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\Question;
 use App\Repositories\Interfaces\QuestionRepositoryInterface;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 
@@ -35,6 +36,18 @@ class QuestionRepository extends BaseRepository implements QuestionRepositoryInt
     public function countByPageId(string $pageId): int
     {
         $this->model = $this->model->where("survey_page_id", $pageId);
+
+        $count = $this->model->count();
+        $this->resetModel();
+
+        return $count;
+    }
+
+    public function countBySurveyId(string $surveyId): int
+    {
+        $this->model = $this->model->whereHas("surveyPage", function (Builder $query) use ($surveyId) {
+            $query->where("survey_id", $surveyId);
+        });
 
         $count = $this->model->count();
         $this->resetModel();

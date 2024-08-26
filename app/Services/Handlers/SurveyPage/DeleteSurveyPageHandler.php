@@ -28,7 +28,7 @@ class DeleteSurveyPageHandler
 
     public function handle(string $pageId): void
     {
-        return $this->databaseManager->transaction(function () use ($pageId) {
+        $this->databaseManager->transaction(function () use ($pageId) {
             $targetPage = $this->surveyPageRepository
                 ->loadRelationCount(new Relationship(name: "questions"))
                 ->findById($pageId);

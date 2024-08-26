@@ -11,5 +11,6 @@ interface QuestionRepositoryInterface extends RepositoryInterface
     public function findWithAnswers(string $pageId, string $responseId): Collection;
     public function resultSummariesByPageId(string $pageId): Collection;
     public function countByPageId(string $pageId): int;
+    public function countBySurveyId(string $surveyId): int;
     public function findLastByPageId(string $pageId): Model|null;
 }

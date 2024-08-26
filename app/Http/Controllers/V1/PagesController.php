@@ -2,23 +2,19 @@
 
 namespace App\Http\Controllers\V1;
 
-use App\Enums\PlacementPositionEnum;
-use App\Exceptions\ResourceNotFoundException;
 use App\Exceptions\UnauthorizedException;
 use App\Http\Controllers\BaseController;
 use App\Http\Requests\V1\CopyPageRequest;
 use App\Http\Requests\V1\MovePageRequest;
 use App\Http\Resources\V1\SurveyPageResource;
-use App\Models\Question;
-use App\Models\Survey;
 use App\Models\SurveyPage;
 use App\Repositories\Interfaces\SurveyPageRepositoryInterface;
 use App\Services\Handlers\SurveyPage\CopySurveyPageHandler;
 use App\Services\Handlers\SurveyPage\DeleteSurveyPageHandler;
 use App\Services\Handlers\SurveyPage\DTO\CopySurveyPageDTO;
+use App\Services\Handlers\SurveyPage\DTO\MoveSurveyPageDTO;
+use App\Services\Handlers\SurveyPage\MoveSurveyPageHandler;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpFoundation\Response;
 
 class PagesController extends BaseController
@@ -26,15 +22,18 @@ class PagesController extends BaseController
     private SurveyPageRepositoryInterface $surveyPageRepository;
     private CopySurveyPageHandler $copySurveyPageHandler;
     private DeleteSurveyPageHandler $deleteSurveyPageHandler;
+    private MoveSurveyPageHandler $moveSurveyPageHandler;
 
     public function __construct(
         SurveyPageRepositoryInterface $surveyPageRepository,
         CopySurveyPageHandler $copySurveyPageHandler,
         DeleteSurveyPageHandler $deleteSurveyPageHandler,
+        MoveSurveyPageHandler $moveSurveyPageHandler,
     ) {
         $this->surveyPageRepository = $surveyPageRepository;
         $this->copySurveyPageHandler = $copySurveyPageHandler;
         $this->deleteSurveyPageHandler = $deleteSurveyPageHandler;
+        $this->moveSurveyPageHandler = $moveSurveyPageHandler;
     }
     public function destroy(Request $request, string $page_id)
     {
@@ -72,142 +71,21 @@ class PagesController extends BaseController
 
     public function move(MovePageRequest $request, $source_page_id)
     {
-        $surveyPage = SurveyPage::find($source_page_id);
-
-        if (!$surveyPage) {
-            throw new ResourceNotFoundException("Survey page resource not found", Response::HTTP_NOT_FOUND);
-        }
+        $surveyPage = $this->surveyPageRepository->findById($source_page_id);
 
         if ($request->user()->cannot("move", [SurveyPage::class, $surveyPage])) {
-            throw new UnauthorizedException(
-                "This action is unauthorized",
-                Response::HTTP_UNAUTHORIZED
-            );
+            throw new UnauthorizedException();
         }
 
         $movePageData = $request->validated();
 
-        try {
-            DB::beginTransaction();
+        $updatedPage = $this->moveSurveyPageHandler->handle(new MoveSurveyPageDTO(
+            $surveyPage->survey_id,
+            $source_page_id,
+            $movePageData["targetPageId"],
+            $movePageData["position"],
+        ));
 
-            $sourcePage = SurveyPage::withCount("questions")->find($source_page_id);
-            if (!$sourcePage) {
-                throw new ResourceNotFoundException("Survey page resource not found", Response::HTTP_NOT_FOUND);
-            }
-
-            $sourcePageQuestions = Question::lockForUpdate()
-                ->orderBy("display_number")
-                ->where("survey_page_id", $sourcePage->id)->get();
-
-            $targetPage = SurveyPage::find($movePageData["targetPageId"]);
-            if (!$targetPage) {
-                throw new ResourceNotFoundException("Survey page resource not found", Response::HTTP_NOT_FOUND);
-            }
-            if ($sourcePage->survey_id !== $targetPage->survey_id) {
-                throw new BadRequestException("Bad request", Response::HTTP_BAD_REQUEST);
-            }
-
-            $surveyId = $sourcePage->survey_id;
-            $survey = Survey::withCount("questions")->find($surveyId);
-            $sourcePagePositionIsAfter = $sourcePage->display_number > $targetPage->display_number;
-            $sourcePageNewPosition = $sourcePagePositionIsAfter
-                ? ($movePageData["position"] === PlacementPositionEnum::AFTER->value
-                    ? $targetPage->display_number + 1
-                    : $targetPage->display_number)
-                : ($sourcePage->display_number < $targetPage->display_number
-                    ? ($movePageData["position"] === PlacementPositionEnum::AFTER->value
-                        ? $targetPage->display_number
-                        : $targetPage->display_number - 1)
-                    : $sourcePage->display_number);
-
-            if ($sourcePagePositionIsAfter) {
-                $condition = $movePageData["position"] === PlacementPositionEnum::AFTER->value
-                    ? ">" : ">=";
-
-                SurveyPage::where("survey_id", $surveyId)
-                    ->where("display_number", $condition, $targetPage->display_number)
-                    ->where("display_number", "<", $sourcePage->display_number)
-                    ->increment("display_number");
-
-                $previousPageWithQuestions = SurveyPage::where('display_number', '<', $sourcePageNewPosition)
-                    ->where("survey_id", $surveyId)
-                    ->whereHas('questions')
-                    ->lockForUpdate()
-                    ->orderBy('display_number', 'desc')
-                    ->first();
-
-                $previousPageWithQuestionsLastQuestion = Question::where("survey_page_id", $previousPageWithQuestions->id)
-                    ->lockForUpdate()
-                    ->orderByDesc("display_number")
-                    ->first();
-
-                Question::whereHas('surveyPage', function ($query) use ($surveyId) {
-                    $query->where('survey_id', $surveyId);
-                })
-                    ->where('display_number', '>', $previousPageWithQuestionsLastQuestion
-                        ? $previousPageWithQuestionsLastQuestion->display_number
-                        : 0)
-                    ->where("display_number", "<", $sourcePageQuestions[0]->display_number)
-                    ->increment('display_number', count($sourcePageQuestions));
-
-                $sourcePageQuestions->each(function ($question, $index) use ($previousPageWithQuestionsLastQuestion) {
-                    Question::where("id", $question->id)
-                        ->update([
-                            "display_number" => $previousPageWithQuestionsLastQuestion
-                                ? $previousPageWithQuestionsLastQuestion->display_number + $index + 1
-                                : $index + 1
-                        ]);
-                });
-            } else if ($sourcePage->display_number < $targetPage->display_number) {
-                SurveyPage::where("survey_id", $surveyId)
-                    ->where("display_number", ">", $sourcePage->display_number)
-                    ->where("display_number", "<=", $movePageData["position"] === PlacementPositionEnum::AFTER->value
-                        ? $targetPage->display_number
-                        : $targetPage->display_number - 1)
-                    ->decrement("display_number");
-
-                $nextPageWithQuestions = SurveyPage::where('display_number', '>', $sourcePageNewPosition)
-                    ->where("survey_id", $surveyId)
-                    ->whereHas('questions')
-                    ->lockForUpdate()
-                    ->orderBy('display_number', 'asc')
-                    ->first();
-
-                $nextPageWithQuestionsFirstQuestion = Question::where("survey_page_id", $nextPageWithQuestions->id)
-                    ->lockForUpdate()
-                    ->orderBy("display_number")
-                    ->first();
-
-                Question::whereHas('surveyPage', function ($query) use ($surveyId) {
-                    $query->where('survey_id', $surveyId);
-                })
-                    ->where('display_number', '>', $sourcePageQuestions[count($sourcePageQuestions) - 1]->display_number)
-                    ->where("display_number", "<", $nextPageWithQuestionsFirstQuestion
-                        ? $nextPageWithQuestionsFirstQuestion->display_number
-                        : $survey->questions_count + 1)
-                    ->decrement('display_number', count($sourcePageQuestions));
-
-                $sourcePageQuestions->each(function ($question, $index) use ($nextPageWithQuestionsFirstQuestion, $sourcePageQuestions, $survey) {
-                    Question::where("id", $question->id)
-                        ->update([
-                            "display_number" => $nextPageWithQuestionsFirstQuestion
-                                ? $nextPageWithQuestionsFirstQuestion->display_number - count($sourcePageQuestions) + $index
-                                : $survey->questions_count + 1 - count($sourcePageQuestions) + $index
-                        ]);
-                });
-            }
-
-            $sourcePage->update([
-                "display_number" => $sourcePageNewPosition
-            ]);
-            $sourcePage->refresh();
-
-            DB::commit();
-        } catch (\Exception $err) {
-            DB::rollBack();
-            throw $err;
-        }
-
-        return new SurveyPageResource($sourcePage);
+        return $this->resourceResponse(SurveyPageResource::class, $updatedPage);
     }
 }
