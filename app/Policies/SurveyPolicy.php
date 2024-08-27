@@ -11,6 +11,11 @@ class SurveyPolicy
     {
         return $user->id === $author_id;
     }
+
+    public function viewSurveyResponsesVolume(User $user, Survey $survey)
+    {
+        return $user->id === $survey->author_id;
+    }
     public function view(?User $user, Survey $survey): bool
     {
         return true;

@@ -12,9 +12,9 @@ use App\Http\Requests\V1\StoreCollectorResponseRequest;
 use App\Models\Question;
 use App\Models\QuestionResponse;
 use App\Models\Survey;
-use App\Models\SurveyCollector;
 use App\Models\SurveyPage;
 use App\Models\SurveyResponse;
+use App\Repositories\Interfaces\SurveyCollectorRepositoryInterface;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
@@ -22,13 +22,16 @@ use Symfony\Component\HttpFoundation\Response;
 
 class CollectorResponsesController extends Controller
 {
+    private SurveyCollectorRepositoryInterface $surveyCollectorRepository;
+    public function __construct(
+        SurveyCollectorRepositoryInterface $surveyCollectorRepository,
+    ) {
+        $this->surveyCollectorRepository = $surveyCollectorRepository;
+    }
     public function store(StoreCollectorResponseRequest $request, string $collector_id)
     {
-        $collector = SurveyCollector::find($collector_id);
+        $collector = $this->surveyCollectorRepository->findById($collector_id);
 
-        if (!$collector) {
-            throw new ResourceNotFoundException("Collector resource not found", Response::HTTP_NOT_FOUND);
-        }
         if ($collector->status === CollectorStatusEnum::CLOSED->value) {
             throw new BadRequestException("Invalid request data provided", Response::HTTP_BAD_REQUEST);
         }

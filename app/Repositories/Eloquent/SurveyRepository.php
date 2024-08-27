@@ -4,7 +4,11 @@ namespace App\Repositories\Eloquent;
 
 use App\Exceptions\BadQueryParamsException;
 use App\Models\Survey;
+use App\Models\SurveyResponse;
 use App\Repositories\Interfaces\SurveyRepositoryInterface;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 
@@ -15,6 +19,21 @@ class SurveyRepository extends BaseRepository implements SurveyRepositoryInterfa
         return Survey::class;
     }
 
+    public function responseVolumeById(string $surveyId, Carbon $startDate, Carbon $today): Collection
+    {
+        $responeVolumeData = SurveyResponse::select(
+            DB::raw('DATE(survey_responses.created_at) as date'),
+            DB::raw('COUNT(*) as response_count')
+        )
+            ->join('survey_collectors', 'survey_responses.survey_collector_id', '=', 'survey_collectors.id')
+            ->where('survey_collectors.survey_id', $surveyId)
+            ->whereBetween('survey_responses.created_at', [$startDate, $today->endOfDay()])
+            ->groupBy(DB::raw('DATE(survey_responses.created_at)'))
+            ->orderBy('date', 'desc')
+            ->get();
+
+        return $responeVolumeData;
+    }
     public function findByCreatorId(string $authorId, string|null $sort)
     {
         $builder = $this->model

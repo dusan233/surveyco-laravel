@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix("surveys")->middleware(["clerkauthentication", "emailVerified"])
     ->group(function () {
         Route::get("{survey}", [SurveysController::class, "show"]);
+        Route::get("{survey}/response-volume", [SurveysController::class, "responseVolume"]);
         Route::post("{survey}/pages", [SurveyPagesController::class, "store"]);
         Route::get("{survey}/pages", [SurveyPagesController::class, "index"]);
         Route::get("{survey}/pages/{page}/rollups", [SurveyPagesController::class, "rollups"]);
