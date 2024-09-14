@@ -30,9 +30,16 @@ class PageQuestionsController extends BaseController
         $this->surveyPageRepository = $surveyPageRepository;
         $this->createQuestionHandler = $createQuestionHandler;
     }
-    public function index(string $page_id)
+    public function index(string $survey_id, string $page_id)
     {
-        $page = $this->surveyPageRepository->findById($page_id);
+        $page = $this->surveyPageRepository->findFirstWhere([
+            "id" => $page_id,
+            "survey_id" => $survey_id,
+        ]);
+
+        if (!$page) {
+            return $this->notFoundResponse();
+        }
 
         $questions = $this->questionRepository
             ->loadRelation(new Relationship(name: "choices"))
@@ -42,9 +49,16 @@ class PageQuestionsController extends BaseController
     }
 
 
-    public function store(StorePageQuestionRequest $request, string $page_id)
+    public function store(StorePageQuestionRequest $request, string $survey_id, string $page_id)
     {
-        $page = $this->surveyPageRepository->findById($page_id);
+        $page = $this->surveyPageRepository->findFirstWhere([
+            "id" => $page_id,
+            "survey_id" => $survey_id,
+        ]);
+
+        if (!$page) {
+            return $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("create", [Question::class, $page])) {
             throw new UnauthorizedException();

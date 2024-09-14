@@ -27,9 +27,16 @@ class ResponsesController extends BaseController
         $this->surveyPageRepository = $surveyPageRepository;
         $this->questionRepository = $questionRepository;
     }
-    public function show(Request $request, string $response_id)
+    public function show(Request $request, string $survey_id, string $response_id)
     {
-        $surveyResponse = $this->surveyResponseRepository->findById($response_id);
+        $surveyResponse = $this->surveyResponseRepository->findFirstWhere([
+            "id" => $response_id,
+            "survey_id" => $survey_id,
+        ]);
+
+        if (!$surveyResponse) {
+            return $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("view", [SurveyResponse::class, $surveyResponse])) {
             throw new UnauthorizedException();
@@ -38,9 +45,16 @@ class ResponsesController extends BaseController
         return $this->resourceResponse(SurveyResponseResource::class, $surveyResponse);
     }
 
-    public function details(Request $request, string $response_id)
+    public function details(Request $request, string $survey_id, string $response_id)
     {
-        $surveyResponse = $this->surveyResponseRepository->findById($response_id);
+        $surveyResponse = $this->surveyResponseRepository->findFirstWhere([
+            "id" => $response_id,
+            "survey_id" => $survey_id,
+        ]);
+
+        if (!$surveyResponse) {
+            return $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("view", [SurveyResponse::class, $surveyResponse])) {
             throw new UnauthorizedException();

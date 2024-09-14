@@ -18,6 +18,7 @@ use App\Services\Handlers\Question\DTO\UpdateQuestionChoiceDTO;
 use App\Services\Handlers\Question\DTO\UpdateQuestionDTO;
 use App\Services\Handlers\Question\MoveQuestionHandler;
 use App\Services\Handlers\Question\UpdateQuestionHandler;
+use Illuminate\Database\Eloquent\Builder;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Http\Request;
@@ -43,9 +44,23 @@ class QuestionsController extends BaseController
         $this->copyQuestionHandler = $copyQuestionHandler;
         $this->moveQuestionHandler = $moveQuestionHandler;
     }
-    public function update(ReplaceQuestionRequest $request, string $question_id)
+    public function update(ReplaceQuestionRequest $request, string $survey_id, string $page_id, string $question_id)
     {
-        $question = $this->questionRepository->findById($question_id);
+        $question = $this->questionRepository->findFirstWhere(
+            [
+                ["id", "=", $question_id],
+                ["survey_page_id", "=", $page_id],
+                function (Builder $query) use ($survey_id) {
+                    $query->whereHas("surveyPage", function (Builder $query) use ($survey_id) {
+                        $query->where("survey_id", "=", $survey_id);
+                    });
+                }
+            ]
+        );
+
+        if (!$question) {
+            $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("update", [Question::class, $question])) {
             throw new UnauthorizedException();
@@ -78,9 +93,23 @@ class QuestionsController extends BaseController
     }
 
 
-    public function destroy(Request $request, string $question_id)
+    public function destroy(Request $request, string $survey_id, string $page_id, string $question_id)
     {
-        $question = $this->questionRepository->findById($question_id);
+        $question = $this->questionRepository->findFirstWhere(
+            [
+                ["id", "=", $question_id],
+                ["survey_page_id", "=", $page_id],
+                function (Builder $query) use ($survey_id) {
+                    $query->whereHas("surveyPage", function (Builder $query) use ($survey_id) {
+                        $query->where("survey_id", "=", $survey_id);
+                    });
+                }
+            ]
+        );
+
+        if (!$question) {
+            $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("delete", [Question::class, $question])) {
             throw new UnauthorizedException();
@@ -93,9 +122,23 @@ class QuestionsController extends BaseController
     }
 
 
-    public function copy(CopyQuestionRequest $request, string $source_question_id)
+    public function copy(CopyQuestionRequest $request, string $survey_id, string $page_id, string $source_question_id)
     {
-        $question = $this->questionRepository->findById($source_question_id);
+        $question = $this->questionRepository->findFirstWhere(
+            [
+                ["id", "=", $source_question_id],
+                ["survey_page_id", "=", $page_id],
+                function (Builder $query) use ($survey_id) {
+                    $query->whereHas("surveyPage", function (Builder $query) use ($survey_id) {
+                        $query->where("survey_id", "=", $survey_id);
+                    });
+                }
+            ]
+        );
+
+        if (!$question) {
+            $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("copy", [Question::class, $question])) {
             throw new UnauthorizedException();
@@ -115,9 +158,23 @@ class QuestionsController extends BaseController
         return $this->resourceResponse(QuestionResource::class, $newQuestion, Response::HTTP_CREATED);
     }
 
-    public function move(MoveQuestionRequest $request, string $source_question_id)
+    public function move(MoveQuestionRequest $request, string $survey_id, string $page_id, string $source_question_id)
     {
-        $question = $this->questionRepository->findById($source_question_id);
+        $question = $this->questionRepository->findFirstWhere(
+            [
+                ["id", "=", $source_question_id],
+                ["survey_page_id", "=", $page_id],
+                function (Builder $query) use ($survey_id) {
+                    $query->whereHas("surveyPage", function (Builder $query) use ($survey_id) {
+                        $query->where("survey_id", "=", $survey_id);
+                    });
+                }
+            ]
+        );
+
+        if (!$question) {
+            $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("move", [Question::class, $question])) {
             throw new UnauthorizedException();

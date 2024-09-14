@@ -48,9 +48,16 @@ class PagesController extends BaseController
         return $this->deletedResponse();
     }
 
-    public function copy(CopyPageRequest $request, $source_page_id)
+    public function copy(CopyPageRequest $request, string $survey_id, string $source_page_id)
     {
-        $surveyPage = $this->surveyPageRepository->findById($source_page_id);
+        $surveyPage = $this->surveyPageRepository->findFirstWhere([
+            "id" => $source_page_id,
+            "survey_id" => $survey_id,
+        ]);
+
+        if (!$surveyPage) {
+            return $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("copy", [SurveyPage::class, $surveyPage])) {
             throw new UnauthorizedException();
@@ -69,9 +76,16 @@ class PagesController extends BaseController
     }
 
 
-    public function move(MovePageRequest $request, $source_page_id)
+    public function move(MovePageRequest $request, string $survey_id, string $source_page_id)
     {
-        $surveyPage = $this->surveyPageRepository->findById($source_page_id);
+        $surveyPage = $this->surveyPageRepository->findFirstWhere([
+            "id" => $source_page_id,
+            "survey_id" => $survey_id,
+        ]);
+
+        if (!$surveyPage) {
+            return $this->notFoundResponse();
+        }
 
         if ($request->user()->cannot("move", [SurveyPage::class, $surveyPage])) {
             throw new UnauthorizedException();
